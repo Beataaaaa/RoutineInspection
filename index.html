@@ -457,6 +457,114 @@ header{
   .dashboard{grid-template-columns:1fr 1fr}
 }
 
+
+/* ===== V6 管理者編輯模式 ===== */
+.admin-btn{
+  border:1px solid rgba(255,255,255,.26);
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  border-radius:10px;
+  padding:8px 10px;
+  font-size:12px;
+  font-weight:800;
+}
+.modal-mask{
+  position:fixed; inset:0; z-index:100;
+  background:rgba(20,32,28,.52);
+  display:none; align-items:flex-end; justify-content:center;
+}
+.modal-mask.show{display:flex}
+.admin-modal{
+  width:min(980px,100%);
+  max-height:92vh;
+  background:#F7F9F7;
+  border-radius:22px 22px 0 0;
+  overflow:hidden;
+  box-shadow:0 -10px 40px rgba(0,0,0,.18);
+}
+.admin-head{
+  background:linear-gradient(135deg,#294E47,#5F8F83);
+  color:#fff;
+  padding:16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.admin-head h2{margin:0;font-size:18px}
+.admin-body{
+  padding:14px;
+  overflow:auto;
+  max-height:calc(92vh - 132px);
+}
+.admin-toolbar{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px
+}
+.admin-toolbar button{
+  border:1px solid #D8E2DD;
+  background:#fff;
+  color:#315C53;
+  border-radius:10px;
+  padding:9px 11px;
+  font-weight:800;
+}
+.admin-list{display:grid;gap:9px}
+.admin-item{
+  background:#fff;
+  border:1px solid #DFE7E2;
+  border-radius:14px;
+  padding:12px;
+  display:grid;
+  grid-template-columns:44px 160px 1fr 110px;
+  gap:9px;
+  align-items:start;
+}
+.admin-no{
+  height:38px;border-radius:10px;background:#E9F0ED;
+  color:#315C53;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+}
+.admin-item input,.admin-item textarea{
+  width:100%;border:1px solid #D7E1DB;border-radius:10px;
+  padding:9px 10px;background:#fff;color:#26332E;
+}
+.admin-item textarea{min-height:64px;resize:vertical}
+.admin-actions{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px
+}
+.admin-actions button{
+  border:1px solid #D8E2DD;
+  background:#F8FAF9;
+  border-radius:9px;
+  padding:8px 6px;
+  color:#315C53;
+  font-weight:800;
+}
+.admin-actions .delete{
+  color:#A84444;background:#FFF7F7;border-color:#E8C3C3;
+}
+.admin-foot{
+  padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+  background:#fff;border-top:1px solid #DFE7E2;
+  display:grid;grid-template-columns:1fr 1fr;gap:9px
+}
+.admin-foot button{
+  border:none;border-radius:12px;padding:12px;font-weight:900
+}
+.admin-cancel{background:#E9EFEC;color:#315C53}
+.admin-save{background:linear-gradient(135deg,#315C53,#5F8F83);color:#fff}
+.admin-note{
+  font-size:12px;color:#6F7D75;margin:4px 2px 12px;line-height:1.6
+}
+@media(max-width:760px){
+  .admin-item{
+    grid-template-columns:38px 1fr;
+  }
+  .admin-item .cat-field{grid-column:2}
+  .admin-item .text-field{grid-column:1 / -1}
+  .admin-actions{grid-column:1 / -1;grid-template-columns:repeat(4,1fr)}
+}
+
 </style>
 </head>
 <body>
@@ -466,7 +574,10 @@ header{
       <h1>百麒設備巡視檢查</h1>
       <div class="sub">每 2 小時巡視一次・異常即時紀錄</div>
     </div>
-    <span class="badge" id="slotBadge">08:00</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="admin-btn" onclick="openAdmin()">管理設定</button>
+      <span class="badge" id="slotBadge">08:00</span>
+    </div>
   </div>
 </header>
 
@@ -480,7 +591,7 @@ header{
     <div class="dash-card">
       <div class="dash-label">已完成時段</div>
       <div class="dash-value" id="dashDoneSlots">0 / 8</div>
-      <div class="dash-sub">21 項皆完成才計入</div>
+      <div class="dash-sub">全部巡檢項目完成才計入</div>
     </div>
     <div class="dash-card warn">
       <div class="dash-label">尚未完成</div>
@@ -524,7 +635,7 @@ header{
       <div class="summary-banner">
         <div class="summary-chip"><strong id="sumDone">0</strong><span>本時段已檢</span></div>
         <div class="summary-chip"><strong id="sumBad">0</strong><span>本時段異常</span></div>
-        <div class="summary-chip"><strong id="sumLeft">21</strong><span>尚未巡檢</span></div>
+        <div class="summary-chip"><strong id="sumLeft">${ITEMS.length}</strong><span>尚未巡檢</span></div>
       </div>
     </div>
 
@@ -557,12 +668,42 @@ header{
   </div>
 </div>
 
+
+<div class="modal-mask" id="adminMask">
+  <div class="admin-modal">
+    <div class="admin-head">
+      <div>
+        <h2>巡檢項目管理</h2>
+        <div style="font-size:12px;opacity:.85;margin-top:3px">新增、修改、刪除、排序與分類</div>
+      </div>
+      <button class="admin-btn" onclick="closeAdmin()">關閉</button>
+    </div>
+
+    <div class="admin-body">
+      <div class="admin-toolbar">
+        <button onclick="adminAddItem()">＋ 新增巡檢項目</button>
+        <button onclick="resetItems()">還原預設項目</button>
+      </div>
+      <div class="admin-note">
+        這裡修改後會立即套用到巡檢前台。既有歷史紀錄會保留當時的勾選資料；
+        若大幅刪除或重排項目，建議從隔天開始使用新版清單。
+      </div>
+      <div class="admin-list" id="adminList"></div>
+    </div>
+
+    <div class="admin-foot">
+      <button class="admin-cancel" onclick="closeAdmin()">取消</button>
+      <button class="admin-save" onclick="saveAdminItems()">儲存設定</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">已儲存</div>
 
 <script>
 const TIMES=["08:00","10:00","12:00","14:00","16:00","18:00","20:00","22:00"];
 
-const ITEMS=[
+const DEFAULT_ITEMS=[
  {cat:"鍋爐・水處理・空壓",t:"鍋爐作業是否正常，管線有無洩漏。"},
  {cat:"鍋爐・水處理・空壓",t:"檢查鍋爐用水及軟化是否正常；鹽水是否有補；清罐劑是否足夠。"},
  {cat:"鍋爐・水處理・空壓",t:"檢查錳砂作業是否正常、各機件是否正常，P 水是否足夠。"},
@@ -585,6 +726,15 @@ const ITEMS=[
  {cat:"環境・人員",t:"各組人員是否在規定位置作業。"},
  {cat:"異常應變",t:"如有突發狀況，是否已完成必要人員調配並以最快方式排除問題。"}
 ];
+let ITEMS = loadCustomItems();
+
+function loadCustomItems(){
+  try{
+    const saved=JSON.parse(localStorage.getItem("baiqi_custom_items")||"null");
+    if(Array.isArray(saved) && saved.length) return saved;
+  }catch(e){}
+  return DEFAULT_ITEMS.map(x=>({...x}));
+}
 
 let currentSlot=TIMES[0];
 const dateEl=document.getElementById("date");
@@ -836,7 +986,7 @@ function exportDailyImage(){
   const margin=70;
   const rowH=68;
   const matrixTop=420;
-  const itemCellW=48;
+  const itemCellW=Math.min(48, Math.max(26, 1050/ITEMS.length));
   const matrixLeft=250;
 
   // collect abnormalities
@@ -945,7 +1095,7 @@ function exportDailyImage(){
     ctx.fillText(t,margin+18,y+42);
     ctx.font='20px "Microsoft JhengHei","Noto Sans TC",sans-serif';
     ctx.fillStyle=done===ITEMS.length?"#2E7D32":"#6B7280";
-    ctx.fillText(`${done}/21`,margin+105,y+42);
+    ctx.fillText(`${done}/${ITEMS.length}`,margin+105,y+42);
     ctx.fillStyle=bad>0?"#C62828":"#6B7280";
     ctx.fillText(String(bad),margin+180,y+42);
 
@@ -1080,6 +1230,86 @@ function renderDashboard(){
   document.getElementById("dashDoneSlots").textContent=`${completedSlots} / ${TIMES.length}`;
   document.getElementById("dashMissingSlots").textContent=missing.length;
   document.getElementById("dashBadCount").textContent=badCount;
+}
+
+
+let adminDraft=[];
+
+function openAdmin(){
+  adminDraft=ITEMS.map(x=>({cat:x.cat||"",t:x.t||""}));
+  renderAdminList();
+  document.getElementById("adminMask").classList.add("show");
+}
+function closeAdmin(){
+  document.getElementById("adminMask").classList.remove("show");
+}
+function renderAdminList(){
+  const box=document.getElementById("adminList");
+  box.innerHTML="";
+  adminDraft.forEach((it,i)=>{
+    const row=document.createElement("div");
+    row.className="admin-item";
+    row.innerHTML=`
+      <div class="admin-no">${i+1}</div>
+      <div class="cat-field">
+        <input type="text" value="${escapeHtml(it.cat||"")}" data-i="${i}" data-field="cat" placeholder="分類">
+      </div>
+      <div class="text-field">
+        <textarea data-i="${i}" data-field="t" placeholder="巡檢項目內容">${escapeHtml(it.t||"")}</textarea>
+      </div>
+      <div class="admin-actions">
+        <button onclick="adminMove(${i},-1)">↑</button>
+        <button onclick="adminMove(${i},1)">↓</button>
+        <button onclick="adminDuplicate(${i})">複製</button>
+        <button class="delete" onclick="adminDelete(${i})">刪除</button>
+      </div>`;
+    box.appendChild(row);
+  });
+  box.querySelectorAll("input,textarea").forEach(el=>{
+    el.addEventListener("input",()=>{
+      const i=+el.dataset.i;
+      adminDraft[i][el.dataset.field]=el.value;
+    });
+  });
+}
+function adminAddItem(){
+  adminDraft.push({cat:"其他",t:""});
+  renderAdminList();
+  const body=document.querySelector(".admin-body");
+  setTimeout(()=>body.scrollTo({top:body.scrollHeight,behavior:"smooth"}),50);
+}
+function adminDelete(i){
+  if(adminDraft.length<=1){ alert("至少要保留 1 個巡檢項目。"); return; }
+  if(!confirm(`確定刪除第 ${i+1} 項？`)) return;
+  adminDraft.splice(i,1);
+  renderAdminList();
+}
+function adminDuplicate(i){
+  adminDraft.splice(i+1,0,{...adminDraft[i]});
+  renderAdminList();
+}
+function adminMove(i,dir){
+  const j=i+dir;
+  if(j<0 || j>=adminDraft.length) return;
+  [adminDraft[i],adminDraft[j]]=[adminDraft[j],adminDraft[i]];
+  renderAdminList();
+}
+function saveAdminItems(){
+  const cleaned=adminDraft
+    .map(x=>({cat:(x.cat||"").trim()||"其他",t:(x.t||"").trim()}))
+    .filter(x=>x.t);
+  if(!cleaned.length){ alert("請至少保留一個有內容的巡檢項目。"); return; }
+
+  localStorage.setItem("baiqi_custom_items",JSON.stringify(cleaned));
+  ITEMS=cleaned;
+  closeAdmin();
+  renderAll();
+  toast("巡檢項目已更新");
+}
+function resetItems(){
+  if(!confirm("確定還原成最初的 21 項巡檢內容？")) return;
+  adminDraft=DEFAULT_ITEMS.map(x=>({...x}));
+  renderAdminList();
 }
 
 function renderAll(){
